@@ -1,0 +1,15 @@
+# 构建产物
+build/
+install/
+
+# 大模型文件不入库(下载/转换方式见 README.md "模型准备")
+# - SenseVoice int8 单文件 229MB, 超过 GitHub 100MB 硬限制
+# - .rkllm ~1.5GB, 且需与 rkllm-toolkit 版本匹配, 由使用者自行放置
+models/asr/sensevoice/model.int8.onnx
+models/asr/sensevoice/model.onnx
+models/llm/
+*.rkllm
+
+# 运行时生成
+*.log
+core.*
