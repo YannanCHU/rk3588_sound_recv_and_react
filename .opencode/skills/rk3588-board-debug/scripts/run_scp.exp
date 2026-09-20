@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+# RK3588 板端 SCP(密码认证)
+# 用法: run_scp.exp <本地文件> <远程路径>
+set timeout 300
+set local [lindex $argv 0]
+set remote [lindex $argv 1]
+spawn scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $local root@192.168.1.100:$remote
+expect {
+    -re "(?i)password:" { send "root\r"; exp_continue }
+    eof
+}

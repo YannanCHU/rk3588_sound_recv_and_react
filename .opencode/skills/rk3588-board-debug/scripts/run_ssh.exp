@@ -1,0 +1,11 @@
+#!/usr/bin/expect -f
+# RK3588 板端 SSH(密码认证, 板上无 sshpass 用 expect 代替)
+# 用法: run_ssh.exp "<远程命令>"
+# 长命令(>90s)请复制本文件改 set timeout
+set timeout 90
+set cmd [lindex $argv 0]
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@192.168.1.100 $cmd
+expect {
+    -re "(?i)password:" { send "root\r"; exp_continue }
+    eof
+}
