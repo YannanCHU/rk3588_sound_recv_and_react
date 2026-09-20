@@ -1,6 +1,6 @@
 # sound_recv — RK3588 端侧语音助手
 
-麦克风采集 (ALSA) → VAD 分片 (Silero) → 语音识别 (SenseVoice, CPU/A76) → 大模型推理 (DeepSeek 1.5B, RKLLM/NPU) → 终端流式输出。
+麦克风采集 (ALSA) → VAD 分片 (Silero) → 语音识别 (SenseVoice, CPU/A76) → 大模型推理 (Qwen3-VL-2B, RKLLM/NPU) → 终端流式输出。
 
 适用于 ATK-DLRK3588 开发板 (aarch64, Linux 6.1 Buildroot, glibc 2.41)。
 
@@ -62,10 +62,10 @@ ctest --test-dir build/host_tests --output-on-failure
 | 模型 | 放置路径 | 下载 |
 |---|---|---|
 | SenseVoice int8 (ASR) | `models/asr/sensevoice/model.int8.onnx`<br>`models/asr/sensevoice/tokens.txt` | [sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2](https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2) 解压取上述两文件 (HF 镜像: [csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17](https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17)) |
-| DeepSeek 1.5B (.rkllm) | `models/llm/deepseek_1.5b.rkllm` | ① 官方模型仓库(提取码 `rkllm`): <https://console.box.lenovo.com/l/l0tXb8> ② 自行转换最稳: PC 装 SDK 自带 rkllm-toolkit (`atk_dlrk3588_linux6.1/external/rknn-llm/rkllm-toolkit/packages/`, Python 3.9-3.12), 源模型 [deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B) |
+| LLM (.rkllm) | `models/llm/qwen3_vl_2b.rkllm`<br>(默认模型, 配套 `--llm-template qwen3`) | 官方模型仓库(提取码 `rkllm`): <https://console.box.lenovo.com/l/l0tXb8> 的 **1.2.3 目录**取 `QWEN3-VL-2B-instruct-w8a8_rk3588.rkllm` 改名放入。板端实测 8.5 tok/s, 全管线内存余量 ~900MB |
 | Silero VAD | `models/vad/silero_vad.onnx` | 已包含在仓库中 |
 
-注意: `.rkllm` 必须由 rkllm-toolkit **v1.2.3** 转换 (与板端 librkllmrt v1.2.3 / rknpu 驱动 0.9.8 匹配), 版本不匹配会静默失败。社区转换版版本不明, 不建议。
+注意: `.rkllm` 必须由 rkllm-toolkit **v1.2.3** 转换 (与板端 librkllmrt v1.2.3 / rknpu 驱动 0.9.8 匹配)。**版本偏差的实测症状**: 旧版 toolkit 转的 DeepSeek 模型在 1.2.3 运行时下能加载、短生成正常, 但长生成会退化为疯狂输出 `[PADxxxxx]` 占位 token。加载日志行 `rkllm-toolkit version` 必须显示 1.2.3。换用 DeepSeek 模型需加 `--llm-template deepseek`。
 
 ## 板端部署与运行
 

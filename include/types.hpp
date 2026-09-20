@@ -145,7 +145,11 @@ struct AsrConfig {
 
 /// RKLLM 推理配置(librkllmrt v1.2.3)。
 struct LlmConfig {
-    std::string model_path = "models/llm/deepseek_1.5b.rkllm";
+    std::string model_path = "models/llm/qwen3_vl_2b.rkllm";
+    /// 提示模板(与模型配套): "qwen3" | "deepseek"。
+    /// qwen3: <|im_start|>user\n...<|im_end|>\n<|im_start|>assistant\n
+    /// deepseek: 全角字符模板(见 rkllm_engine.cpp, 勿手打)
+    std::string prompt_template = "qwen3";
     int32_t max_new_tokens = 512;
     int32_t max_context_len = 2048;
     int32_t top_k = 1;             ///< 贪心解码(语音助手要稳定, 不要发散)

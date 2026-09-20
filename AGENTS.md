@@ -1,6 +1,6 @@
 # AGENTS.md — sound_recv 语音识别工程
 
-基于 ATK-DLRK3588 开发板的端侧语音助手：麦克风采集(ALSA) → VAD(Silero) → ASR(sherpa-onnx SenseVoice) → LLM(RKLLM DeepSeek 1.5B, NPU) → 终端流式输出。
+基于 ATK-DLRK3588 开发板的端侧语音助手：麦克风采集(ALSA) → VAD(Silero) → ASR(sherpa-onnx SenseVoice) → LLM(RKLLM Qwen3-VL-2B, NPU) → 终端流式输出。
 
 当前状态：**Phase 1 代码已落地**（3 工作线程 + 无调度线程 EventBus）。构建/测试/部署命令见 `README.md`，架构与事件契约以 `design.md` 为准（3.3 有实施修订注记），实施记录见 `docs/plans/2026-09-15-sound-recv-framework.md`。
 
@@ -54,7 +54,7 @@ SDK 目录（`atk_dlrk3588_linux6.1/`）体积巨大，只读参考，不要修�
 ## 关键坑点
 
 1. **模型文件不在仓库中**：`*.rkllm` 与 SenseVoice 需另行获取（下载地址见 README.md "模型准备"）；silero_vad.onnx 已在 `models/vad/`。`.rkllm` 需在 PC 端用 rkllm-toolkit v1.2.3 从 HuggingFace 模型转换（SDK: `external/rknn-llm/rkllm-toolkit/packages/`）。
-2. **DeepSeek Prompt 模板必须手动拼接**：`<｜begin▁of▁sentence｜><｜User｜>` + 输入 + `<｜Assistant｜>`。其中 `｜` 是全角字符 U+FF5C、`▁` 是 U+2581，直接从参考 demo 的 main.cc 复制，勿手打（本工程实现位于 `src/rkllm_engine.cpp`，勿改动该两行）。
+2. **提示模板必须与模型配套**（`rkllm_engine.cpp` 内置两套，经 `LlmConfig.prompt_template` / CLI `--llm-template` 选择）：默认 **qwen3**（`<|im_start|>user\n...<|im_end|>\n<|im_start|>assistant\n`，纯 ASCII 可手打）；**deepseek** 为历史兼容（`<｜begin▁of▁sentence｜><｜User｜>` + 输入 + `<｜Assistant｜>`，其中 `｜` 是全角 U+FF5C、`▁` 是 U+2581，该两行从参考 demo main.cc 逐字节拷贝，勿手打）。
 3. **rkllm_run() 是同步阻塞调用**：token 通过 callback 流式返回（`RKLLM_RUN_NORMAL` 逐 token、`RKLLM_RUN_FINISH` 结束）。多线程设计中 LLM 推理必须在独立线程，不得阻塞音频采集线程。
 4. **librkllmrt.so 依赖 libgomp.so**（OpenMP），部署和链接时两者都要带上。
 5. **RKLLM 运行时版本必须与 .rkllm 模型及板端 rknpu 驱动匹配**（当前 runtime v1.2.3 / 驱动 0.9.8）。**版本不符的典型症状：rkllm_init 阶段直接段错误**。板端启动时看 banner 行 `rkllm-runtime version` 确认实际加载的版本。曾因 llm_test 的 librkllmrt.so 实为 v1.1.4 而踩坑（v1.1.4 回调为 void、v1.2.3 为 int 返回值，头文件不兼容，已修复）。

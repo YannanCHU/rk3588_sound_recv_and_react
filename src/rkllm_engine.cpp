@@ -18,11 +18,15 @@ namespace sound_recv {
 static constexpr const char* kTag = "llm";
 static constexpr auto kPollTimeout = std::chrono::milliseconds(200);
 
-// ---- DeepSeek Prompt 模板 ----
-// 下方两行由脚本从 llm_test main.cc:13-14 逐字节拷贝生成, 严禁手打修改!
-// 其中 ｜ 为全角 U+FF5C, ▁ 为 U+2581。
-static const char* kPromptPrefix = "<｜begin▁of▁sentence｜><｜User｜>";
-static const char* kPromptPostfix = "<｜Assistant｜>";
+// ---- 提示模板(与模型配套, 运行时按 cfg_.prompt_template 选择) ----
+// Qwen3 系列(含 Qwen3-VL)chat 模板: 纯 ASCII, 可安全手打。
+static const char* kQwen3Prefix = "<|im_start|>user\n";
+static const char* kQwen3Postfix = "<|im_end|>\n<|im_start|>assistant\n";
+
+// DeepSeek 模板: 下方两行由脚本从 llm_test main.cc:13-14 逐字节拷贝生成,
+// 其中 ｜ 为全角 U+FF5C, ▁ 为 U+2581, 严禁手打修改!
+static const char* kDeepSeekPrefix = "<｜begin▁of▁sentence｜><｜User｜>";
+static const char* kDeepSeekPostfix = "<｜Assistant｜>";
 
 RkllmEngine::RkllmEngine(LlmConfig cfg, EventBus& bus)
     : cfg_(std::move(cfg))
@@ -154,12 +158,16 @@ void RkllmEngine::run()
             SR_LOG_WARN(kTag) << "清空 KV 缓存失败 rc=" << rc_clear << " (继续推理)";
         }
 
-        // 手动拼接 DeepSeek 模板(坑点 2)
-        std::string text = std::string(kPromptPrefix) + prompt->text + kPromptPostfix;
+        // 提示模板按模型选择(坑点 2)
+        const bool is_qwen3 = cfg_.prompt_template != "deepseek"; // 默认 qwen3
+        std::string text = is_qwen3
+            ? std::string(kQwen3Prefix) + prompt->text + kQwen3Postfix
+            : std::string(kDeepSeekPrefix) + prompt->text + kDeepSeekPostfix;
 
         RKLLMInput input;
         std::memset(&input, 0, sizeof(input));
         input.input_type = RKLLM_INPUT_PROMPT;
+        input.role = "user"; // 官方 demo 同款(1.2.3); enable_thinking 保持 0(非思考模式)
         input.prompt_input = text.c_str();
 
         RKLLMInferParam infer;

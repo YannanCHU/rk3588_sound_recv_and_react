@@ -43,7 +43,8 @@ void print_usage(const char* prog)
         "  --vad-model <path>    Silero VAD onnx      (默认 models/vad/silero_vad.onnx)\n"
         "  --asr-model <path>    SenseVoice int8 onnx (默认 models/asr/sensevoice/model.int8.onnx)\n"
         "  --asr-tokens <path>   tokens.txt           (默认 models/asr/sensevoice/tokens.txt)\n"
-        "  --llm-model <path>    DeepSeek .rkllm      (默认 models/llm/deepseek_1.5b.rkllm)\n"
+        "  --llm-model <path>    LLM .rkllm 模型路径   (默认 models/llm/deepseek_1.5b.rkllm)\n"
+        "  --llm-template <t>    提示模板 qwen3|deepseek (默认 qwen3, 与模型配套)\n"
         "  --asr-threads <n>     ASR 解码线程数       (默认 4, A76 大核)\n"
         "  --no-llm              调试: 不加载 RKLLM, 只跑 采集+ASR\n"
         "  --run-seconds <n>     调试: n 秒后自动优雅关停\n"
@@ -58,6 +59,7 @@ struct CliArgs {
     std::string asr_model;
     std::string asr_tokens;
     std::string llm_model;
+    std::string llm_template; // 空串 = 用默认(qwen3)
     int asr_threads = 0;  // 0 = 用默认值
     bool no_llm = false;  // 调试隔离开关: 不加载 RKLLM, 只跑 采集+ASR
     int run_seconds = 0;  // 调试: N 秒后自动走优雅关停(与 Ctrl+C 同路径)
@@ -86,6 +88,8 @@ CliArgs parse_args(int argc, char** argv)
             a.asr_tokens = next("--asr-tokens");
         } else if (arg == "--llm-model") {
             a.llm_model = next("--llm-model");
+        } else if (arg == "--llm-template") {
+            a.llm_template = next("--llm-template");
         } else if (arg == "--asr-threads") {
             a.asr_threads = std::atoi(next("--asr-threads"));
         } else if (arg == "--no-llm") {
@@ -133,6 +137,9 @@ int main(int argc, char** argv)
     LlmConfig llm_cfg;
     if (!cli.llm_model.empty()) {
         llm_cfg.model_path = cli.llm_model;
+    }
+    if (!cli.llm_template.empty()) {
+        llm_cfg.prompt_template = cli.llm_template;
     }
 
     std::printf("==== sound_recv 端侧语音助手 (RK3588) ====\n");
